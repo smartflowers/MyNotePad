@@ -27,12 +27,14 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -100,7 +102,11 @@ public class NoteEditor extends AppCompatActivity {
             mRect = new Rect();
             mPaint = new Paint();
             mPaint.setStyle(Paint.Style.STROKE);
-            mPaint.setColor(0x800000FF);
+            mPaint.setColor(Color.YELLOW);
+            setInputType(InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+            setSingleLine(false);
+            setHorizontallyScrolling(false);
+
         }
 
         /**
@@ -112,7 +118,6 @@ public class NoteEditor extends AppCompatActivity {
 
             // Gets the number of lines of text in the View.
             int count = getLineCount();
-
             // Gets the global Rect and Paint objects
             Rect r = mRect;
             Paint paint = mPaint;
