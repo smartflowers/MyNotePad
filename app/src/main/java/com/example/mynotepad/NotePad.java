@@ -150,5 +150,22 @@ public final class NotePad {
          * <P>Type: INTEGER (long from System.curentTimeMillis())</P>
          */
         public static final String COLUMN_NAME_MODIFICATION_DATE = "modified";
+
+        /*
+        * Tag selection corresponding to NoteEditor items[] index
+        * */
+        public static final String COLUMN_TAG_SELECTION_INDEX="tag";
+        /*
+        * NoteEditor.java EditText setBackGroundColor
+        * */
+        public static final String COLUMN_BACKGROUND_COLOR="bColor";
+        /*
+         * NoteEditor.java EditText setTextColor
+         * */
+        public static final String COLUMN_TEXT_COLOR="tColor";
+        /*
+         * NoteEditor.java EditText setTextColor
+         * */
+        public static final String COLUMN_TEXT_NOTIFICATION_DATE="notification";
     }
 }

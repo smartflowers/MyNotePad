@@ -155,6 +155,25 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
         sNotesProjectionMap.put(
                 NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE,
                 NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE);
+        // Maps "tag" to "tag"
+        sNotesProjectionMap.put(
+                NotePad.Notes.COLUMN_TAG_SELECTION_INDEX,
+                NotePad.Notes.COLUMN_TAG_SELECTION_INDEX);
+        //Maps "bColor" to "bColor"
+        sNotesProjectionMap.put(
+                NotePad.Notes.COLUMN_BACKGROUND_COLOR,
+                NotePad.Notes.COLUMN_BACKGROUND_COLOR
+        );
+        //Maps "tColor" to "tColor"
+        sNotesProjectionMap.put(
+                NotePad.Notes.COLUMN_TEXT_COLOR,
+                NotePad.Notes.COLUMN_TEXT_COLOR
+        );
+        //Maps "tColor" to "tColor"
+        sNotesProjectionMap.put(
+                NotePad.Notes.COLUMN_TEXT_NOTIFICATION_DATE,
+                NotePad.Notes.COLUMN_TEXT_NOTIFICATION_DATE
+        );
 
         /*
          * Creates an initializes a projection map for handling Live Folders
@@ -196,7 +215,11 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
                    + NotePad.Notes.COLUMN_NAME_TITLE + " TEXT,"
                    + NotePad.Notes.COLUMN_NAME_NOTE + " TEXT,"
                    + NotePad.Notes.COLUMN_NAME_CREATE_DATE + " INTEGER,"
-                   + NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE + " Text"
+                   + NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE + " Text,"
+                   + NotePad.Notes.COLUMN_TAG_SELECTION_INDEX+" Text,"
+                   + NotePad.Notes.COLUMN_BACKGROUND_COLOR+" Text,"
+                   + NotePad.Notes.COLUMN_TEXT_NOTIFICATION_DATE+" Text,"
+                   + NotePad.Notes.COLUMN_TEXT_COLOR+" Text"
                    + ");");
        }
 

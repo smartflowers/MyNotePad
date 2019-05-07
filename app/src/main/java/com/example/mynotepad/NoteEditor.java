@@ -17,34 +17,60 @@
 package com.example.mynotepad;
 
 
+import android.Manifest;
+import android.app.AlarmManager;
+import android.app.AlertDialog;
+import android.app.DatePickerDialog;
+import android.app.PendingIntent;
+import android.app.TimePickerDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.Cursor;
-import android.graphics.Canvas;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Rect;
+import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
-import android.text.InputType;
+import android.text.Spannable;
+import android.text.SpannableString;
 import android.text.TextWatcher;
+import android.text.style.ImageSpan;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.DatePicker;
 import android.widget.EditText;
-
+import android.widget.TextView;
+import android.widget.TimePicker;
+import android.widget.Toast;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * This Activity handles "editing" a note, where editing is responding to
@@ -60,15 +86,24 @@ import java.util.Date;
 public class NoteEditor extends AppCompatActivity {
     // For logging and debugging purposes
     private static final String TAG = "NoteEditor";
-
+    private static final int PHOTO_FROM_GALLERY = 1;
+    private static final int PHOTO_FROM_CAMERA = 2;
+    private static final String regex="content://com.android.providers.media.documents/"
+            +"document/image%\\w{4}";
+    private static final String reg="file:///storage/emulated/0/\\d+.jpg";
     /*
      * Creates a projection that returns the note ID and the note contents.
      */
     private static final String[] PROJECTION =
         new String[] {
-            NotePad.Notes._ID,
-            NotePad.Notes.COLUMN_NAME_TITLE,
-            NotePad.Notes.COLUMN_NAME_NOTE
+                NotePad.Notes._ID,
+                NotePad.Notes.COLUMN_NAME_TITLE,
+                NotePad.Notes.COLUMN_NAME_NOTE,
+                NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE,
+                NotePad.Notes.COLUMN_TAG_SELECTION_INDEX,
+                NotePad.Notes.COLUMN_BACKGROUND_COLOR,
+                NotePad.Notes.COLUMN_TEXT_COLOR,
+                NotePad.Notes.COLUMN_TEXT_NOTIFICATION_DATE,
     };
 
     // A label for the saved state of the activity
@@ -86,60 +121,89 @@ public class NoteEditor extends AppCompatActivity {
     private EditText mText;
     private String mOriginalContent;
     private Menu amenu;
+    private TextView textView;
+    private final String items[]={"Default","Travel","Work","Study","Life"};
+    private int checkItem=0;
+    private Button button;
+    private boolean flag=false;
+    private Uri imageUri;
+    private boolean isFlag;
+    private String colorBack="null";
+    private String colorText="null";
+    private Button dateButton;
+    private String date=null;
+    private String time=null;
+
+    public void onClick(View v) {
+        switch (v.getId()){
+            case R.id.orange:
+                if(isFlag){
+                    mText.setBackgroundColor(Color.parseColor("#FF8C00"));
+                    colorBack="#FF8C00";
+                }else{
+                    mText.setTextColor(Color.parseColor("#FF8C00"));
+                    colorText="#FF8C00";
+                }
+                break;
+            case R.id.chocolate:
+                if(isFlag){
+                    mText.setBackgroundColor(Color.parseColor("#D2691E"));
+                    colorBack="#D2691E";
+                }else{
+                    mText.setTextColor(Color.parseColor("#D2691E"));
+                    colorText="#D2691E";
+                }
+                break;
+            case R.id.aqua:
+                if(isFlag){
+                    mText.setBackgroundColor(Color.parseColor("#00FFFF"));
+                    colorBack="#00FFFF";
+                }else{
+                    mText.setTextColor(Color.parseColor("#00FFFF"));
+                    colorText="#00FFFF";
+                }
+                break;
+            case R.id.gray:
+                if(isFlag){
+                    mText.setBackgroundColor(Color.parseColor("#696969"));
+                    colorBack="#696969";
+                }else{
+                    mText.setTextColor(Color.parseColor("#696969"));
+                    colorText="#696969";
+                }
+                break;
+            case R.id.pink:
+                if(isFlag){
+                    mText.setBackgroundColor(Color.parseColor("#D81B60"));
+                    colorBack="#D81B60";
+                }else{
+                    mText.setTextColor(Color.parseColor("#D81B60"));
+                    colorText="#D81B60";
+                }
+                break;
+            case R.id.green:
+                if(isFlag){
+                    mText.setBackgroundColor(Color.parseColor("#00FF7F"));
+                    colorBack="#00FF7F";
+                }else{
+                    mText.setTextColor(Color.parseColor("#00FF7F"));
+                    colorText="#00FF7F";
+                }
+                break;
+        }
+    }
 
     /**
      * Defines a custom EditText View that draws lines between each line of text that is displayed.
      */
     public static class LinedEditText extends android.support.v7.widget.AppCompatEditText {
-        private Rect mRect;
-        private Paint mPaint;
-
         // This constructor is used by LayoutInflater
         public LinedEditText(Context context, AttributeSet attrs) {
             super(context, attrs);
-
             // Creates a Rect and a Paint object, and sets the style and color of the Paint object.
-            mRect = new Rect();
-            mPaint = new Paint();
-            mPaint.setStyle(Paint.Style.STROKE);
-            mPaint.setColor(Color.YELLOW);
-            setInputType(InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+            //setInputType(InputType.TYPE_TEXT_FLAG_MULTI_LINE);
             setSingleLine(false);
             setHorizontallyScrolling(false);
-
-        }
-
-        /**
-         * This is called to draw the LinedEditText object
-         * @param canvas The canvas on which the background is drawn.
-         */
-        @Override
-        protected void onDraw(Canvas canvas) {
-
-            // Gets the number of lines of text in the View.
-            int count = getLineCount();
-            // Gets the global Rect and Paint objects
-            Rect r = mRect;
-            Paint paint = mPaint;
-
-            /*
-             * Draws one line in the rectangle for every line of text in the EditText
-             */
-            for (int i = 0; i < count; i++) {
-
-                // Gets the baseline coordinates for the current line of text
-                int baseline = getLineBounds(i, r);
-
-                /*
-                 * Draws a line in the background from the left of the rectangle to the right,
-                 * at a vertical position one dip below the baseline, using the "paint" object
-                 * for details.
-                 */
-                canvas.drawLine(r.left, baseline + 1, r.right, baseline + 1, paint);
-            }
-
-            // Finishes up by calling the parent method
-            super.onDraw(canvas);
         }
     }
 
@@ -225,6 +289,7 @@ public class NoteEditor extends AppCompatActivity {
                 null          // Use the default sort order (modification date, descending)
         );
 
+
         // For a paste, initializes the data from clipboard.
         // (Must be done after mCursor is initialized.)
         if (Intent.ACTION_PASTE.equals(action)) {
@@ -238,7 +303,7 @@ public class NoteEditor extends AppCompatActivity {
         setContentView(R.layout.note_editor);
 
         // Gets a handle to the EditText in the the layout.
-        mText = (EditText) findViewById(R.id.note);
+        mText = findViewById(R.id.note);
         mText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -261,6 +326,35 @@ public class NoteEditor extends AppCompatActivity {
         if (savedInstanceState != null) {
             mOriginalContent = savedInstanceState.getString(ORIGINAL_CONTENT);
         }
+        textView=findViewById(R.id.etv);
+        button=findViewById(R.id.eb);
+        dateButton=findViewById(R.id.dateButtom);
+        dateButton.setVisibility(View.GONE);
+    }
+    public void tagSelect(View v){
+        AlertDialog.Builder tagbuilder;
+        AlertDialog alertDialog;
+        tagbuilder=new AlertDialog.Builder(this);
+        tagbuilder.setTitle("Tag Selection:");
+        tagbuilder.setIcon(R.mipmap.ic_launcher);
+
+        tagbuilder.setSingleChoiceItems(items, checkItem, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                checkItem=which;
+                button.setText(items[checkItem]);
+
+            }
+        });
+        tagbuilder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        alertDialog=tagbuilder.create();
+        alertDialog.show();
+
     }
 
     /**
@@ -274,7 +368,6 @@ public class NoteEditor extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-
         /*
          * mCursor is initialized, since onCreate() always precedes onResume for any running
          * process. This tests that it's not null, since it should always contain data.
@@ -298,10 +391,50 @@ public class NoteEditor extends AppCompatActivity {
                 Resources res = getResources();
                 String text = String.format(res.getString(R.string.title_edit), title);
                 setTitle(text);
+                int colTagIndex=mCursor.getColumnIndex(NotePad.Notes.COLUMN_TAG_SELECTION_INDEX);
+                String tag = mCursor.getString(colTagIndex);
+                for(int i=0;i<items.length;i++){
+                    if(items[i].equals(tag)){
+                        checkItem=i;
+                        break;
+                    }
+                }
+                int colModifyDate=mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE);
+                String date=mCursor.getString(colModifyDate);
+                textView.setText(date);
+                button.setText(items[checkItem]);
+                colorBack=mCursor.getString(mCursor.getColumnIndex(NotePad.Notes.COLUMN_BACKGROUND_COLOR));
+                colorText=mCursor.getString(mCursor.getColumnIndex(NotePad.Notes.COLUMN_TEXT_COLOR));
+                if(!"null".equals(colorBack)&&colorBack!=null){
+                    mText.setBackgroundColor(Color.parseColor(colorBack));
+                }
+                if(!"null".equals(colorText)&colorText!=null){
+                    mText.setTextColor(Color.parseColor(colorText));
+                }
+                String calender=mCursor.getString(mCursor.getColumnIndex(NotePad.Notes.COLUMN_TEXT_NOTIFICATION_DATE));
+                dateButton.setText(calender);
 
+                if(dateButton.getText().toString()!=null
+                        && !(dateButton.getText().toString().equalsIgnoreCase("nullnull"))
+                        &&!(dateButton.getText().toString().equalsIgnoreCase(""))){
+                    dateButton.setVisibility(View.VISIBLE);
+                }
             // Sets the title to "create" for inserts
             } else if (mState == STATE_INSERT) {
                 setTitle(getText(R.string.title_create));
+                int colTagIndex=mCursor.getColumnIndex(NotePad.Notes.COLUMN_TAG_SELECTION_INDEX);
+                String tag = mCursor.getString(colTagIndex);
+                for(int i=0;i<items.length;i++){
+                    if(items[i].equals(tag)){
+                        checkItem=i;
+                        break;
+                    }
+                }
+                button.setText(items[checkItem]);
+                Date nowTime = new Date(System.currentTimeMillis());
+                SimpleDateFormat sdFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                String retStrFormatNowDate = sdFormatter.format(nowTime);
+                textView.setText(retStrFormatNowDate);
             }
 
             /*
@@ -314,10 +447,38 @@ public class NoteEditor extends AppCompatActivity {
             // Gets the note text from the Cursor and puts it in the TextView, but doesn't change
             // the text cursor's position.
             int colNoteIndex = mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_NOTE);
-            String note = mCursor.getString(colNoteIndex);
-            mText.setTextKeepState(note);
 
-            // Stores the original note text, to allow the user to revert changes.
+            String note = mCursor.getString(colNoteIndex);
+            ArrayList<String> contentList=new ArrayList<>();
+            ArrayList<Integer> startList=new ArrayList<>();
+            ArrayList<Integer> endList=new ArrayList<>();
+            Pattern p=Pattern.compile(regex);
+            Matcher m=p.matcher(note);
+
+            while(m.find()){
+                contentList.add(m.group());
+                startList.add(m.start());
+                endList.add(m.end());
+                flag=true;
+            }
+            p=Pattern.compile(reg);
+            m=p.matcher(note);
+            while(m.find()){
+                contentList.add(m.group());
+                startList.add(m.start());
+                endList.add(m.end());
+                flag=true;
+            }
+
+            if(!flag){
+                mText.setText(note);
+            }else{
+                pushPicture(note,contentList,startList,endList);
+            }
+            //mText.setText(note);
+
+
+            //Stores the original note text, to allow the user to revert changes.
             if (mOriginalContent == null) {
                 mOriginalContent = note;
             }
@@ -330,6 +491,30 @@ public class NoteEditor extends AppCompatActivity {
             setTitle(getText(R.string.error_title));
             mText.setText(getText(R.string.error_message));
         }
+    }
+    private void pushPicture(String note,ArrayList<String> contentList,ArrayList<Integer> startList,ArrayList<Integer> endList) {
+        //创建一个SpannableString对象，以便插入用ImageSpan对象封装的图像
+        SpannableString spannableString = new SpannableString(note);
+        for(int i=0;i<contentList.size();i++) {
+            Uri uri = Uri.parse(contentList.get(i));
+            Bitmap bitmap = null;
+            try {
+                Bitmap originalBitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(uri));
+                bitmap = resizeImage(originalBitmap, 200, 200);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+            if (bitmap != null) {
+                //根据Bitmap对象创建ImageSpan对象
+                ImageSpan imageSpan = new ImageSpan(NoteEditor.this, bitmap);
+
+                //  用ImageSpan对象替换face
+                spannableString.setSpan(imageSpan, startList.get(i), endList.get(i), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+        mText.setText("");
+        Editable edit_text = mText.getEditableText();
+        edit_text.append(spannableString);
     }
 
     /**
@@ -394,15 +579,155 @@ public class NoteEditor extends AppCompatActivity {
                  */
             } else if (mState == STATE_EDIT) {
                 // Creates a map to contain the new values for the columns
-                updateNote(text, null);
+                //updateNote(text, null);
 
             } else if (mState == STATE_INSERT) {
-                updateNote(text, text);
+                //updateNote(text, text);
                 mState = STATE_EDIT;
           }
         }
+
+    }
+    /*
+    * the method insert resources
+    *
+    *
+    * */
+    //从相册取图片
+    public void getPhoto() {
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_OPEN_DOCUMENT);
+        startActivityForResult(intent, PHOTO_FROM_GALLERY);
+    }
+    //拍照取照片
+    public void takeCamera() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions( this, new String[] { Manifest.permission.CAMERA }, PHOTO_FROM_CAMERA);
+        }
+        else {
+            File file=new File(Environment.getExternalStorageDirectory(),System.currentTimeMillis()+".jpg");
+            try {
+                if(file.exists()){
+                    file.delete();
+                }
+                file.createNewFile();
+            }catch (IOException e){
+                e.printStackTrace();
+            }
+            imageUri=Uri.fromFile(file);
+            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            intent.putExtra(MediaStore.EXTRA_OUTPUT,imageUri);
+            startActivityForResult(intent, PHOTO_FROM_CAMERA);
+        }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        ContentResolver resolver = getContentResolver();
+        super.onActivityResult(requestCode, resultCode, data);
+        //第一层switch
+        switch (requestCode) {
+            case PHOTO_FROM_GALLERY:
+                //第二层switch
+                switch (resultCode) {
+                    case RESULT_OK:
+                        if (data != null) {
+                            Uri uri = data.getData();
+                            Bitmap bitmap = null;
+                            try {
+                                Bitmap originalBitmap = BitmapFactory.decodeStream(resolver.openInputStream(uri));
+                                bitmap = resizeImage(originalBitmap, 200, 200);
+                            } catch (FileNotFoundException e) {
+                                e.printStackTrace();
+                            }
+                            if(bitmap != null){//如果图片存在
+                                //将选择的图片追加到EditText中光标所在位置
+                                int index = mText.getSelectionStart(); //获取光标所在位置
+                                Editable edit_text = mText.getEditableText();
+                                if(index <0 || index >= edit_text.length()){
+                                    edit_text.append(uri.toString());
+                                    updateNoteText(mText.getText().toString());
+                                }else{
+                                    edit_text.insert(index,uri.toString());
+                                    updateNoteText(mText.getText().toString());
+                                }
+                            }else{
+                                Toast.makeText(NoteEditor.this, "获取图片失败", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                        break;
+                    case RESULT_CANCELED:
+                        break;
+                }
+                break;
+            case PHOTO_FROM_CAMERA:
+                if (resultCode == RESULT_OK) {
+                    Bitmap originalBitmap1=null;
+                    try{
+                        originalBitmap1=BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
+                    }catch (FileNotFoundException e){
+                        e.printStackTrace();
+                    }
+                    if(originalBitmap1 != null){//如果图片存在保存URI
+                        //将选择的图片追加到EditText中光标所在位置
+                        int index = mText.getSelectionStart(); //获取光标所在位置
+                        Editable edit_text = mText.getEditableText();
+                        if(index <0 || index >= edit_text.length()){
+                            edit_text.append(imageUri.toString());
+                            updateNoteText(mText.getText().toString());
+                        }else{
+                            edit_text.insert(index, imageUri.toString());
+                            updateNoteText(mText.getText().toString());
+                        }
+                    }else{
+                        Toast.makeText(NoteEditor.this, "获取图片失败", Toast.LENGTH_SHORT).show();
+                    }
+
+                } else {
+                    Log.e("result", "is not ok" + resultCode);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    /**
+     * 图片缩放
+     * @param originalBitmap 原始的Bitmap
+     * @param newWidth 自定义宽度
+     * @return 缩放后的Bitmap
+     */
+    private Bitmap resizeImage(Bitmap originalBitmap, int newWidth, int newHeight){
+        int width = originalBitmap.getWidth();
+        int height = originalBitmap.getHeight();
+        //定义欲转换成的宽、高
+//            int newWidth = 200;
+//            int newHeight = 200;
+        //计算宽、高缩放率
+        float scanleWidth = (float)newWidth/width;
+        float scanleHeight = (float)newHeight/height;
+        //创建操作图片用的matrix对象 Matrix
+        Matrix matrix = new Matrix();
+        // 缩放图片动作
+        matrix.postScale(scanleWidth,scanleHeight);
+        //旋转图片 动作
+        //matrix.postRotate(45);
+        // 创建新的图片Bitmap
+        Bitmap resizedBitmap = Bitmap.createBitmap(originalBitmap,0,0,width,height,matrix,true);
+        return resizedBitmap;
+    }
+    private void showColor(){
+        AlertDialog alertDialog=new AlertDialog.Builder(this).setTitle("请选择颜色").
+                setIcon(R.mipmap.ic_launcher).setView(R.layout.color_layout)
+                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                }).create();
+        alertDialog.show();
+    }
     /**
      * This method is called when the user clicks the device's Menu button the first time for
      * this Activity. Android passes in a Menu object that is populated with items.
@@ -457,20 +782,144 @@ public class NoteEditor extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle all of the possible menu actions.
         switch (item.getItemId()) {
-        case R.id.menu_save:
-            String text = mText.getText().toString();
-            updateNote(text, null);
-            finish();
-            break;
-        case R.id.menu_delete:
-            deleteNote();
-            finish();
-            break;
-        case R.id.menu_revert:
-            cancelNote();
-            break;
+            case R.id.menu_save:
+                String text = mText.getText().toString();
+                updateNote(text, null);
+                notifyMessage();
+                finish();
+                break;
+            case R.id.menu_delete:
+                deleteNote();
+                finish();
+                break;
+            case R.id.menu_revert:
+                cancelNote();
+                break;
+            case R.id.insert_album:
+                 getPhoto();
+                 break;
+            case R.id.insert_camera:
+                takeCamera();
+                break;
+            case R.id.background_color:
+                isFlag=true;
+                showColor();
+                break;
+            case R.id.text_color:
+                isFlag=false;
+                showColor();
+                break;
+            case R.id.set_date:
+                createDateDialog();
+                break;
+            case R.id.set_time:
+                createTimeDialog();
+                break;
         }
         return super.onOptionsItemSelected(item);
+    }
+    private void notifyMessage(){
+        if(time!=null&&date!=null){
+            SimpleDateFormat simpleDateFormat=new SimpleDateFormat("yyyy-MM-dd HH:mm");
+            long t=System.currentTimeMillis()+5000;
+            try {
+                t=simpleDateFormat.parse(date+time).getTime();
+            } catch (Exception e) {
+                // TODO: handle exception
+                e.printStackTrace();
+            }
+            Intent intent=new Intent(NoteEditor.this, RemindActionBroadcast.class);
+
+            intent.putExtra("title",mCursor.getString(mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_TITLE)));
+            intent.putExtra("context",mCursor.getString(mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_NOTE)));
+            PendingIntent pendingIntent=PendingIntent.getBroadcast(NoteEditor.this,mCursor.getInt(mCursor.getColumnIndex(NotePad.Notes._ID)),intent,PendingIntent.FLAG_UPDATE_CURRENT);
+
+            Calendar calendar=Calendar.getInstance();
+            calendar.setTimeInMillis(System.currentTimeMillis());
+            calendar.add(Calendar.SECOND,(int)((t-System.currentTimeMillis())/1000));
+            //calendar.add(Calendar.SECOND,5);
+            Log.i("ASDAWDAWD",String.valueOf(((t-System.currentTimeMillis())/1000)));
+            AlarmManager alarmManager=(AlarmManager)getSystemService(ALARM_SERVICE);
+            alarmManager.set(AlarmManager.RTC_WAKEUP,calendar.getTimeInMillis(),pendingIntent);
+        }
+    }
+    private void createDateDialog(){
+        final Calendar calendar=Calendar.getInstance();
+        DatePickerDialog dialog = new DatePickerDialog(this, AlertDialog.THEME_HOLO_DARK,
+                new DatePickerDialog.OnDateSetListener() {
+                    @Override
+                    public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
+                        date=year+"-"+(month+1)+"-"+dayOfMonth;
+                        if(time!=null){
+                            dateButton.setText(date+time);
+                        }else{
+                            String text=calendar.get(Calendar.HOUR_OF_DAY)+":"+(calendar.get(Calendar.MINUTE)+5);
+                            time=" "+text;
+                            dateButton.setText(date+" "+text);
+                        }
+
+                        dateButton.setVisibility(View.VISIBLE);
+                    }
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH));
+        dialog.getDatePicker().setMinDate(System.currentTimeMillis()-1000);
+        dialog.setTitle("选择日期：");
+        dialog.show();
+    }
+    private void createTimeDialog(){
+        final Calendar calendar=Calendar.getInstance();
+        TimePickerDialog dialog=new TimePickerDialog(this, AlertDialog.THEME_HOLO_DARK,new TimePickerDialog.OnTimeSetListener() {
+            @Override
+            public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+                String text=calendar.get(Calendar.YEAR)+"-"+(calendar.get(Calendar.MONTH)+1)+"-"+calendar.get(Calendar.DAY_OF_MONTH);
+                if(text.equals(date)||date==null){
+                    if(hourOfDay<=calendar.get(Calendar.HOUR_OF_DAY))
+                        if(minute-5<=calendar.get(Calendar.MINUTE)){
+                            time=" "+calendar.get(Calendar.HOUR_OF_DAY)+":"+(calendar.get(Calendar.MINUTE)+5);
+                        }
+                        else{
+                            time=" "+calendar.get(Calendar.HOUR_OF_DAY)+":"+minute;
+                        }
+                    else{
+                        time=" "+hourOfDay+":"+minute;
+                    }
+                }else{
+                    time=" "+hourOfDay+":"+minute;
+                }
+                if(date!=null){
+                    dateButton.setText(date+time);
+                }else{
+                    date=text;
+                    dateButton.setText(text+time);
+                }
+                dateButton.setVisibility(View.VISIBLE);
+            }
+        },
+                calendar.get(Calendar.HOUR_OF_DAY),
+                calendar.get(Calendar.MINUTE), true);
+        dialog.setTitle("选择时间：");
+
+        dialog.show();
+    }
+    public void dateClick(View view){
+        AlertDialog.Builder builder=new AlertDialog.Builder(this);
+        builder.setMessage("请确认是否删除提醒时间：").setPositiveButton("确认", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                date=null;
+                time=null;
+                dateButton.setVisibility(View.GONE);
+                dialog.dismiss();
+            }
+        }).setNegativeButton("取消", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        builder.create().show();
     }
 
 //BEGIN_INCLUDE(paste)
@@ -547,13 +996,17 @@ public class NoteEditor extends AppCompatActivity {
      */
     private final void updateNote(String text, String title) {
         Date nowTime = new Date(System.currentTimeMillis());
-       // System.out.println(System.currentTimeMillis());
         SimpleDateFormat sdFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String retStrFormatNowDate = sdFormatter.format(nowTime);
-        //System.out.println(retStrFormatNowDate);
+
         // Sets up a map to contain values to be updated in the provider.
         ContentValues values = new ContentValues();
         values.put(NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE, retStrFormatNowDate);
+        values.put(NotePad.Notes.COLUMN_TAG_SELECTION_INDEX,items[checkItem]);
+        values.put(NotePad.Notes.COLUMN_BACKGROUND_COLOR,colorBack);
+        values.put(NotePad.Notes.COLUMN_TEXT_COLOR,colorText);
+
+        values.put(NotePad.Notes.COLUMN_TEXT_NOTIFICATION_DATE,date+time);
 
         // If the action is to insert a new note, this creates an initial title for it.
         if (mState == STATE_INSERT) {
@@ -567,7 +1020,7 @@ public class NoteEditor extends AppCompatActivity {
                 // Sets the title by getting a substring of the text that is 31 characters long
                 // or the number of characters in the note plus one, whichever is smaller.
                 title = text.substring(0, Math.min(5, length));
-                Log.i("12346",title);
+
                 // If the resulting length is more than 30 characters, chops off any
                 // trailing spaces
                 if (length > 30) {
@@ -609,6 +1062,24 @@ public class NoteEditor extends AppCompatActivity {
         );
 
     }
+    private final void updateNoteText(String text) {
+
+        ContentValues values = new ContentValues();
+        // This puts the desired notes text into the map.
+        values.put(NotePad.Notes.COLUMN_NAME_NOTE, text);
+        if(mCursor!=null){
+            values.put(NotePad.Notes.COLUMN_NAME_TITLE,mCursor.getString(mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_TITLE)));
+        }else {
+            values.put(NotePad.Notes.COLUMN_NAME_TITLE, text.substring(0, Math.min(5, text.length())));
+        }
+        getContentResolver().update(
+                mUri,    // The URI for the record to update.
+                values,  // The map of column names and new values to apply to them.
+                null,    // No selection criteria are used, so no where columns are necessary.
+                null     // No where columns are used, so no where arguments are necessary.
+        );
+
+    }
 
     /**
      * This helper method cancels the work done on a note.  It deletes the note if it was
@@ -618,8 +1089,8 @@ public class NoteEditor extends AppCompatActivity {
         if (mCursor != null) {
             if (mState == STATE_EDIT) {
                 // Put the original note text back into the database
-                mCursor.close();
-                mCursor = null;
+                /*mCursor.close();
+                mCursor = null;*/
                 ContentValues values = new ContentValues();
                 values.put(NotePad.Notes.COLUMN_NAME_NOTE, mOriginalContent);
                 getContentResolver().update(mUri, values, null, null);
@@ -629,7 +1100,35 @@ public class NoteEditor extends AppCompatActivity {
             }
         }
         setResult(RESULT_CANCELED);
-        mText.setText(mOriginalContent);
+        ArrayList<String> contentList=new ArrayList<>();
+        ArrayList<Integer> startList=new ArrayList<>();
+        ArrayList<Integer> endList=new ArrayList<>();
+        Pattern p=Pattern.compile(regex);
+        Matcher m=p.matcher(mOriginalContent);
+
+        while(m.find()){
+            contentList.add(m.group());
+            startList.add(m.start());
+            endList.add(m.end());
+            flag=true;
+            //Log.i("dawdawd",notes[i]);
+        }
+        p=Pattern.compile(reg);
+        m=p.matcher(mOriginalContent);
+        while(m.find()){
+            contentList.add(m.group());
+            startList.add(m.start());
+            endList.add(m.end());
+            flag=true;
+        }
+
+
+        if(flag==false){
+            mText.setText(mOriginalContent);
+        }else{
+            pushPicture(mOriginalContent,contentList,startList,endList);
+        }
+
     }
 
     /**
@@ -643,4 +1142,6 @@ public class NoteEditor extends AppCompatActivity {
             mText.setText("");
         }
     }
+
+
 }

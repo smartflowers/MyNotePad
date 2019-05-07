@@ -15,4 +15,44 @@
           android:icon="@drawable/ic_menu_delete"
           android:title="@string/menu_delete"
           app:showAsAction="always|withText" />
+    <item android:title="插入图片"
+        android:icon="@android:drawable/ic_menu_gallery"
+        app:showAsAction="always|withText">
+        <menu>
+            <item
+                android:title="相册"
+                android:icon="@android:drawable/ic_menu_gallery"
+                android:id="@+id/insert_album">
+            </item>
+            <item
+                android:id="@+id/insert_camera"
+                android:icon="@android:drawable/ic_menu_camera"
+                android:title="拍照">
+            </item>
+        </menu>
+    </item>
+    <item
+        android:title="改变颜色">
+        <menu>
+            <item
+                android:title="改变背景颜色"
+                android:id="@+id/background-color">
+            </item>
+            <item android:id="@+id/text-color"
+                android:title="改变字体颜色">
+            </item>
+        </menu>
+    </item>
+    <item
+        android:title="设置提醒时间">
+        <menu>
+            <item
+                android:title="设置日期"
+                android:id="@+id/set-date">
+            </item>
+            <item android:id="@+id/set-time"
+                android:title="设置时间">
+            </item>
+        </menu>
+    </item>
 </menu>

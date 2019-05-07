@@ -116,7 +116,6 @@ public class TitleEditor extends AppCompatActivity {
             // The Cursor was just retrieved, so its index is set to one record *before* the first
             // record retrieved. This moves it to the first record.
             mCursor.moveToFirst();
-            Log.i("12345",mText.getText().toString());
             // Displays the current title text in the EditText object.
             mText.setText(mCursor.getString(COLUMN_INDEX_TITLE));
 

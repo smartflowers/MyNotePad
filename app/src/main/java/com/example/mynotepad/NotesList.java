@@ -18,6 +18,7 @@ package com.example.mynotepad;
 
 
 
+import android.Manifest;
 import android.app.LoaderManager;
 import android.content.ClipboardManager;
 import android.content.ClipData;
@@ -27,15 +28,23 @@ import android.content.Context;
 import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 
 
+import android.support.annotation.NonNull;
+import android.support.design.widget.NavigationView;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.ContextMenu;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -82,6 +91,12 @@ public class NotesList extends AppCompatActivity implements LoaderManager.Loader
     // noteslist_item.xml
      private int[] viewIDs = { R.id.text1,R.id.text2 };
      private Cursor updatecursor;
+     private Toolbar toolbar;
+     private DrawerLayout drawerLayout;
+     private NavigationView navigationView;
+     private Cursor tagCursor;
+     //tag select applied in NavigationItemSelected
+     private String tagSelection;
     /**
      * onCreate is called when Android starts this Activity from scratch.
      */
@@ -92,7 +107,105 @@ public class NotesList extends AppCompatActivity implements LoaderManager.Loader
         // The user does not need to hold down the key to use menu shortcuts.
         setDefaultKeyMode(DEFAULT_KEYS_SHORTCUT);
         listView=findViewById(R.id.tv);
+        toolbar=findViewById(R.id.tb);
+        drawerLayout=findViewById(R.id.dl);
+        setSupportActionBar(toolbar);
+        toolbar.setNavigationOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                drawerLayout.openDrawer(Gravity.START);
+            }
+        });
+        //navigation view settings
+        navigationView=findViewById(R.id.nv);
+        navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
+                switch (menuItem.getItemId()){
+                    case R.id.notepad:
+                        tagCursor = getContentResolver().query(
+                                getIntent().getData(),            // Use the default content URI for the provider.
+                                PROJECTION,                       // Return the note ID and title for each note.
+                                null,                             // No where clause, return all records.
+                                null,                             // No where clause, therefore no where column values.
+                                NotePad.Notes.DEFAULT_SORT_ORDER  // Use the default sort order.
+                        );
+                        adapter.swapCursor(tagCursor);
+                        toolbar.setTitle("MyNotePad");
+                        drawerLayout.closeDrawer(navigationView);
+                        break;
+                    case R.id.travel:
+                        tagSelection=NotePad.Notes.COLUMN_TAG_SELECTION_INDEX+" = 'Travel'";
+                        tagCursor = getContentResolver().query(
+                                getIntent().getData(),            // Use the default content URI for the provider.
+                                PROJECTION,                       // Return the note ID and title for each note.
+                                tagSelection,                             // No where clause, return all records.
+                                null,                             // No where clause, therefore no where column values.
+                                NotePad.Notes.DEFAULT_SORT_ORDER  // Use the default sort order.
+                        );
+                        adapter.swapCursor(tagCursor);
+                        toolbar.setTitle("Travel");
+                        drawerLayout.closeDrawer(navigationView);
+                        break;
+                    case R.id.work:
+                        tagSelection=NotePad.Notes.COLUMN_TAG_SELECTION_INDEX+" = 'Work'";
+                        tagCursor = getContentResolver().query(
+                                getIntent().getData(),            // Use the default content URI for the provider.
+                                PROJECTION,                       // Return the note ID and title for each note.
+                                tagSelection,                             // No where clause, return all records.
+                                null,                             // No where clause, therefore no where column values.
+                                NotePad.Notes.DEFAULT_SORT_ORDER  // Use the default sort order.
+                        );
+                        adapter.swapCursor(tagCursor);
+                        toolbar.setTitle("Work");
+                        drawerLayout.closeDrawer(navigationView);
+                        break;
+                    case R.id.study:
+                        tagSelection=NotePad.Notes.COLUMN_TAG_SELECTION_INDEX+" = 'Study'";
+                        tagCursor = getContentResolver().query(
+                                getIntent().getData(),            // Use the default content URI for the provider.
+                                PROJECTION,                       // Return the note ID and title for each note.
+                                tagSelection,                             // No where clause, return all records.
+                                null,                             // No where clause, therefore no where column values.
+                                NotePad.Notes.DEFAULT_SORT_ORDER  // Use the default sort order.
+                        );
+                        adapter.swapCursor(tagCursor);
+                        toolbar.setTitle("Study");
+                        drawerLayout.closeDrawer(navigationView);
+                        break;
+                    case R.id.life:
+                        tagSelection=NotePad.Notes.COLUMN_TAG_SELECTION_INDEX+" = 'Life'";
+                        tagCursor = getContentResolver().query(
+                                getIntent().getData(),            // Use the default content URI for the provider.
+                                PROJECTION,                       // Return the note ID and title for each note.
+                                tagSelection,                             // No where clause, return all records.
+                                null,                             // No where clause, therefore no where column values.
+                                NotePad.Notes.DEFAULT_SORT_ORDER  // Use the default sort order.
+                        );
+                        adapter.swapCursor(tagCursor);
+                        toolbar.setTitle("Life");
+                        drawerLayout.closeDrawer(navigationView);
+                        break;
+                    case R.id.def:
+                        tagSelection=NotePad.Notes.COLUMN_TAG_SELECTION_INDEX+" = 'Default'";
+                        tagCursor = getContentResolver().query(
+                                getIntent().getData(),            // Use the default content URI for the provider.
+                                PROJECTION,                       // Return the note ID and title for each note.
+                                tagSelection,                             // No where clause, return all records.
+                                null,                             // No where clause, therefore no where column values.
+                                NotePad.Notes.DEFAULT_SORT_ORDER  // Use the default sort order.
+                        );
+                        adapter.swapCursor(tagCursor);
+                        toolbar.setTitle("Default");
+                        drawerLayout.closeDrawer(navigationView);
+                        break;
+                }
+                return true;
+            }
+        });
         SearchView();
+        searchView.clearFocus();
+
         /* If no data is given in the Intent that started this Activity, then this Activity
          * was started when the intent filter matched a MAIN action. We should use the default
          * provider URI.
@@ -148,7 +261,7 @@ public class NotesList extends AppCompatActivity implements LoaderManager.Loader
                       viewIDs,
                       CursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER
               );
-
+        requestPower();
         // Sets the ListView's adapter to be the cursor adapter that was just created.
 
         listView.setAdapter(adapter);
@@ -178,6 +291,21 @@ public class NotesList extends AppCompatActivity implements LoaderManager.Loader
 
         LoaderManager loaderManager=getLoaderManager();
         loaderManager.initLoader(0,null, this);
+    }
+    public void requestPower() {
+        //判断是否已经赋予权限
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            //如果应用之前请求过此权限但用户拒绝了请求，此方法将返回 true。
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE)) {//这里可以写个对话框之类的项向用户解释为什么要申请权限，并在对话框的确认键后续再次申请权限
+            } else {
+                //申请权限，字符串数组内是一个或多个要申请的权限，1是申请权限结果的返回参数，在onRequestPermissionsResult可以得知申请结果
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,}, 1);
+            }
+        }
     }
     private void SearchView(){
         searchView=findViewById(R.id.sv);
@@ -219,6 +347,12 @@ public class NotesList extends AppCompatActivity implements LoaderManager.Loader
                 return false;
             }
         });
+
+    }
+    @Override
+    protected void onResume() {
+        super.onResume();
+
     }
 
     /**
@@ -530,38 +664,4 @@ public class NotesList extends AppCompatActivity implements LoaderManager.Loader
         adapter.swapCursor(null);
     }
 
-
-    /**
-     * This method is called when the user clicks a note in the displayed list.
-     *
-     * This method handles incoming actions of either PICK (get data from the provider) or
-     * GET_CONTENT (get or create data). If the incoming action is EDIT, this method sends a
-     * new Intent to start NoteEditor.
-     * @param l The ListView that contains the clicked item
-     * @param v The View of the individual item
-     * @param position The position of v in the displayed list
-     * @param id The row ID of the clicked item
-     */
-    /*@Override
-    protected void onListItemClick(ListView l, View v, int position, long id) {
-
-        // Constructs a new URI from the incoming URI and the row ID
-        Uri uri = ContentUris.withAppendedId(getIntent().getData(), id);
-
-        // Gets the action from the incoming Intent
-        String action = getIntent().getAction();
-
-        // Handles requests for note data
-        if (Intent.ACTION_PICK.equals(action) || Intent.ACTION_GET_CONTENT.equals(action)) {
-
-            // Sets the result to return to the component that called this Activity. The
-            // result contains the new URI
-            setResult(RESULT_OK, new Intent().setData(uri));
-        } else {
-
-            // Sends out an Intent to start an Activity that can handle ACTION_EDIT. The
-            // Intent's data is the note ID URI. The effect is to call NoteEdit.
-            startActivity(new Intent(Intent.ACTION_EDIT, uri));
-        }
-    }*/
 }
