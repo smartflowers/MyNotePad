@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group>
+        <item android:title="NotePad">
+            <menu>
+                <item
+                    android:id="@+id/notepad"
+                    android:title="MyNotePad">
+                </item>
+            </menu>
+        </item>
+    </group>
+    <group>
+        <item android:title="tag">
+            <menu>
+                <item
+                    android:id="@+id/travel"
+                    android:title="Travel">
+                </item>
+                <item
+                    android:id="@+id/work"
+                    android:title="Work">
+                </item>
+                <item
+                    android:id="@+id/study"
+                    android:title="Study">
+                </item>
+                <item
+                    android:id="@+id/life"
+                    android:title="Life">
+                </item>
+                <item
+                    android:id="@+id/def"
+                    android:title="Default">
+                </item>
+            </menu>
+        </item>
+    </group>
+</menu>
