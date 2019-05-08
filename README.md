@@ -439,6 +439,7 @@ style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar"
 </menu>
 ```
 （3）编写toolbar的监听事件和NavigationView的监听事件
+1.toolbar
 ```
 setSupportActionBar(toolbar); //set support toolbar in this Activity
 toolbar.setNavigationOnClickListener(new View.OnClickListener() {
@@ -448,6 +449,7 @@ toolbar.setNavigationOnClickListener(new View.OnClickListener() {
     }
 });
 ```
+2.NavigationView
 ```
 navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
             @Override
@@ -749,6 +751,154 @@ private void pushPicture(String note,ArrayList<String> contentList,ArrayList<Int
 <img src=https://github.com/smartflowers/MyNotePad/blob/1.0/pictures/insertByCamera3.jpg width="200" />
 
 ## 设置各文本的提醒时间
+### 代码分析
+（1）在NoteEditor.java中添加控件，我是选用Button，比较方便通过监听来处理事件，比较简单，就不作代码演示
+（2）在NoteEditor.java中的OptionMenu中添加相应的选项，和选择事件的触发，也比较简单和上述功能类似，也不做代码演示
+（3）创建DatePickerDialog和TimePickerDialog来进行时间与日期的选择
+1.DatePickerDialog
+```
+private void createDateDialog(){
+        final Calendar calendar=Calendar.getInstance();
+        DatePickerDialog dialog = new DatePickerDialog(this, AlertDialog.THEME_HOLO_DARK,
+                new DatePickerDialog.OnDateSetListener() {
+                    @Override
+                    public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
+                        date=year+"-"+(month+1)+"-"+dayOfMonth;
+                        if(time!=null){
+                            dateButton.setText(date+time);
+                        }else{
+                            String text=calendar.get(Calendar.HOUR_OF_DAY)+":"+(calendar.get(Calendar.MINUTE)+5);
+                            time=" "+text;//如果时间未指定，则默认为当前时间的5分钟后提醒
+                            dateButton.setText(date+" "+text);
+                        }
+
+                        dateButton.setVisibility(View.VISIBLE);
+                    }
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH));
+        dialog.getDatePicker().setMinDate(System.currentTimeMillis()-1000);//选择以当前时间开始，避免无效时间的选择
+        dialog.setTitle("选择日期：");
+        dialog.show();
+    }
+```
+2.TimePickerDialog
+```
+private void createTimeDialog(){
+        final Calendar calendar=Calendar.getInstance();
+        TimePickerDialog dialog=new TimePickerDialog(this, AlertDialog.THEME_HOLO_DARK,new TimePickerDialog.OnTimeSetListener() {
+            @Override
+            public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+                String text=calendar.get(Calendar.YEAR)+"-"+(calendar.get(Calendar.MONTH)+1)+"-"+calendar.get(Calendar.DAY_OF_MONTH);
+                /*
+                * 判断时间的选择是否为无效时间，在当前的时间之前
+                * */
+                if(text.equals(date)||date==null){
+                    if(hourOfDay<=calendar.get(Calendar.HOUR_OF_DAY))
+                        if(minute-5<=calendar.get(Calendar.MINUTE)){
+                            //为无效时间的话就将时间设为五分钟之后
+                            time=" "+calendar.get(Calendar.HOUR_OF_DAY)+":"+(calendar.get(Calendar.MINUTE)+5);
+                        }
+                        else{
+                            time=" "+calendar.get(Calendar.HOUR_OF_DAY)+":"+minute;
+                        }
+                    else{
+                        time=" "+hourOfDay+":"+minute;
+                    }
+                }else{
+                    time=" "+hourOfDay+":"+minute;
+                }
+                if(date!=null){
+                    dateButton.setText(date+time);
+                }else{
+                    date=text;
+                    dateButton.setText(text+time);
+                }
+                dateButton.setVisibility(View.VISIBLE);
+            }
+        },
+                calendar.get(Calendar.HOUR_OF_DAY),
+                calendar.get(Calendar.MINUTE), true);
+        dialog.setTitle("选择时间：");
+
+        dialog.show();
+    }
+```
+（4）当保存笔记之后，将需要提醒的信息封装进PendingIntent，以广播的形式发送出去
+```
+private void notifyMessage(){
+        if(time!=null&&date!=null){
+            SimpleDateFormat simpleDateFormat=new SimpleDateFormat("yyyy-MM-dd HH:mm");
+            long t=System.currentTimeMillis()+5000;
+            try {
+                t=simpleDateFormat.parse(date+time).getTime();
+            } catch (Exception e) {
+                // TODO: handle exception
+                e.printStackTrace();
+            }
+            //是Intent跳转到指定的广播处理
+            Intent intent=new Intent(NoteEditor.this, RemindActionBroadcast.class);
+            /*
+            * 把文本的内容和标题存入Intent
+            * */
+            intent.putExtra("title",mCursor.getString(mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_TITLE)));
+            intent.putExtra("context",mCursor.getString(mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_NOTE)));
+            //将requestCode设为每个文本的ID以实现能够发送不同的信息，不会被覆盖
+            PendingIntent pendingIntent=PendingIntent.getBroadcast(NoteEditor.this,mCursor.getInt(mCursor.getColumnIndex(NotePad.Notes._ID)),intent,PendingIntent.FLAG_UPDATE_CURRENT);
+
+            Calendar calendar=Calendar.getInstance();
+            calendar.setTimeInMillis(System.currentTimeMillis());
+            calendar.add(Calendar.SECOND,(int)((t-System.currentTimeMillis())/1000));
+
+            //使用AlarmManager实现定时功能
+            AlarmManager alarmManager=(AlarmManager)getSystemService(ALARM_SERVICE);
+            alarmManager.set(AlarmManager.RTC_WAKEUP,calendar.getTimeInMillis(),pendingIntent);
+        }
+    }
+```
+（5）在广播接受类中进行处理和通知
+```
+public class RemindActionBroadcast extends BroadcastReceiver {
+    public static int id=0;
+    @Override
+    public void onReceive(Context context, Intent intent) {
+
+        PendingIntent pendingIntent=PendingIntent.getActivity(context,0,intent,0);
+        NotificationManager notificationManager=(NotificationManager)context.getSystemService(context.NOTIFICATION_SERVICE);
+        Notification.Builder mbuilder=new Notification.Builder(context);
+        mbuilder.setContentTitle(intent.getStringExtra("title"));//设置通知栏标题
+        mbuilder.setContentText(intent.getStringExtra("context"));//设置通知栏内容
+        mbuilder.setSmallIcon(R.mipmap.ic_launcher);//设置小图标
+        mbuilder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(),R.mipmap.ic_launcher));//设置大图标
+        mbuilder.setContentIntent(pendingIntent);//设置点击跳转的Intent，因为没有设置uri，所以跳转为空
+        mbuilder.setAutoCancel(true);//点击之后消失
+        Notification notification=mbuilder.build();
+        notificationManager.notify(id++,notification);//能够传送多条消息
+    }
+}
+```
+（6）点击设置时间按钮取消设置通知时间
+```
+public void dateClick(View view){
+        AlertDialog.Builder builder=new AlertDialog.Builder(this);
+        builder.setMessage("请确认是否删除提醒时间：").setPositiveButton("确认", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                date=null;
+                time=null;
+                dateButton.setVisibility(View.GONE);
+                dialog.dismiss();
+            }
+        }).setNegativeButton("取消", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        builder.create().show();
+    }
+```
 ### 效果
 <img src=https://github.com/smartflowers/MyNotePad/blob/1.0/pictures/setNotiDate.jpg width="200" />
 <img src=https://github.com/smartflowers/MyNotePad/blob/1.0/pictures/setDate1.jpg width="200" />
@@ -760,3 +910,8 @@ private void pushPicture(String note,ArrayList<String> contentList,ArrayList<Int
 <img src=https://github.com/smartflowers/MyNotePad/blob/1.0/pictures/setAnotherNoti.jpg width="200" />
 <img src=https://github.com/smartflowers/MyNotePad/blob/1.0/pictures/notifiResults.jpg width="200" />
 <img src=https://github.com/smartflowers/MyNotePad/blob/1.0/pictures/deleteNoti.jpg width="200" />
+
+## 最后
+***记得点个Star哟***<br>
+<img src=https://github.com/smartflowers/MyNotePad/blob/1.0/pictures/timg.jpg />
+
