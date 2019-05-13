@@ -564,7 +564,7 @@ navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigation
         </menu>
     </item>
 ```
-（2）拍照要在AndroidManifest.xml中设置权限，API23以上还要在代码中设置动态权限，API28以上权限设置更为严格，本功能并不适用。而从图库中选取照片权限要求较低.
+（2）拍照要在AndroidManifest.xml中设置权限，API23以上还要在代码中设置动态权限，API28以上权限设置更为严格，可能并不适用，代码还需改进。而从图库中选取照片权限要求较低.
 ```
 <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 <uses-permission android:name="android.permission.CAMERA" />
@@ -580,6 +580,9 @@ public void getPhoto() {
 }
 //拍照取照片
 public void takeCamera() {
+        /***
+        **申请动态权限
+        **/
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions( this, new String[] { Manifest.permission.CAMERA }, PHOTO_FROM_CAMERA);
         }
@@ -593,6 +596,7 @@ public void takeCamera() {
             }catch (IOException e){
                 e.printStackTrace();
             }
+            //将文件路径转化为uri传入Intent
             imageUri=Uri.fromFile(file);
             Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             intent.putExtra(MediaStore.EXTRA_OUTPUT,imageUri);
