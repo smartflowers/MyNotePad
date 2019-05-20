@@ -297,7 +297,7 @@ sNotesProjectionMap.put(
 
 ## 添加标签以将文本分类
 ### 代码分析
-（1）在数据库中添加标签字段，与修改颜色功能类似，不作相应代码显示
+（1）在数据库中添加标签字段，与修改颜色功能类似，不作相应代码显示<br>
 （2）在NodeEditor.java布局文件中添加Button控件，点击弹出AlertDialog显示类别选项，设置按钮文本
 ```
 //tag selection defined
