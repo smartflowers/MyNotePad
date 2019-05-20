@@ -329,7 +329,7 @@ public void tagSelect(View v){
         alertDialog.show();
     }
 ```
-（3）点击保存之后会将按钮文本保存到数据库，与时间戳功能类似，不再作具体演示
+（3）点击保存之后会将按钮文本保存到数据库，与时间戳功能类似，不再作具体演示<br>
 （4）在NoteList.java添加抽屉布局，以显示侧滑菜单栏的效果<br>
 1.在AndroidManifest.xml中更改主题，禁用ActionBar，查看引用，在styles.xml中进行修改
 ```
@@ -438,7 +438,7 @@ style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar"
     </group>
 </menu>
 ```
-（3）编写toolbar的监听事件和NavigationView的监听事件
+（3）编写toolbar的监听事件和NavigationView的监听事件<br>
 1.toolbar
 ```
 setSupportActionBar(toolbar); //set support toolbar in this Activity
@@ -756,9 +756,9 @@ private void pushPicture(String note,ArrayList<String> contentList,ArrayList<Int
 
 ## 设置各文本的提醒时间
 ### 代码分析
-（1）在NoteEditor.java中添加控件，我是选用Button，比较方便通过监听来处理事件，比较简单，就不作代码演示
-（2）在NoteEditor.java中的OptionMenu中添加相应的选项，和选择事件的触发，也比较简单和上述功能类似，也不做代码演示
-（3）创建DatePickerDialog和TimePickerDialog来进行时间与日期的选择
+（1）在NoteEditor.java中添加控件，我是选用Button，比较方便通过监听来处理事件，比较简单，就不作代码演示<br>
+（2）在NoteEditor.java中的OptionMenu中添加相应的选项，和选择事件的触发，也比较简单和上述功能类似，也不做代码演示<br>
+（3）创建DatePickerDialog和TimePickerDialog来进行时间与日期的选择<br>
 1.DatePickerDialog
 ```
 private void createDateDialog(){
@@ -918,4 +918,3 @@ public void dateClick(View view){
 ## 最后
 ***记得点个Star哟***<br>
 <img src=https://github.com/smartflowers/MyNotePad/blob/1.0/pictures/timg.jpg />
-
